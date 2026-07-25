@@ -79,7 +79,6 @@ class Settings:
     dry_run: bool
     heartbeat_file: str
     keyring: dict
-    transfer_keyring: dict
 
     @classmethod
     def from_env(cls):
@@ -96,5 +95,4 @@ class Settings:
             dry_run=_bool_env("DRY_RUN", False),
             heartbeat_file=os.environ.get("HEARTBEAT_FILE", "/run/last-reconcile"),
             keyring=_json_env("KEYRING_JSON"),
-            transfer_keyring=_json_env("TRANSFER_KEYRING_JSON"),
         )

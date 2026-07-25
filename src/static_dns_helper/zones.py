@@ -44,7 +44,7 @@ def fetch_live(zone_name, settings):
         resolve_nameserver(settings.nameserver),
         zone_name,
         port=settings.port,
-        keyring=dns.tsigkeyring.from_text(settings.transfer_keyring),
+        keyring=dns.tsigkeyring.from_text(settings.keyring),
         keyalgorithm="hmac-sha256",
         timeout=QUERY_TIMEOUT,
         lifetime=TRANSFER_TIMEOUT,

@@ -28,5 +28,4 @@ def settings(tmp_path):
         dry_run=False,
         heartbeat_file=str(tmp_path / "heartbeat"),
         keyring={"update-key": "c2VjcmV0c2VjcmV0c2VjcmV0c2VjcmV0c2VjcmV0AA=="},
-        transfer_keyring={"transfer-key": "dHJhbnNmZXJ0cmFuc2ZlcnRyYW5zZmVyAA=="},
     )

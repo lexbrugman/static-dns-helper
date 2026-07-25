@@ -32,7 +32,6 @@ REVERSE_V4 = "1.42.10.in-addr.arpa"
 REVERSE_V6 = "8.b.d.0.1.0.0.2.ip6.arpa"
 MARKER = "x-dyn:"
 UPDATE_SECRET = base64.b64encode(b"integration-update-secret-32byte").decode()
-TRANSFER_SECRET = base64.b64encode(b"integration-xfer-secret-32bytes!").decode()
 
 NAMED_CONF = f"""
 options {{
@@ -43,7 +42,6 @@ options {{
     listen-on-v6 {{ any; }};
 }};
 key "update-key" {{ algorithm hmac-sha256; secret "{UPDATE_SECRET}"; }};
-key "transfer-key" {{ algorithm hmac-sha256; secret "{TRANSFER_SECRET}"; }};
 """
 
 ZONE_CONF = """
@@ -51,7 +49,7 @@ zone "{zone}" {{
     type primary;
     file "/var/lib/bind/{zone}.zone";
     allow-update {{ key "update-key"; }};
-    allow-transfer {{ key "transfer-key"; }};
+    allow-transfer {{ key "update-key"; }};
 }};
 """
 
@@ -172,12 +170,11 @@ def settings(bind_server, tmp_path):
         dry_run=False,
         heartbeat_file=str(tmp_path / "heartbeat"),
         keyring={"update-key": UPDATE_SECRET},
-        transfer_keyring={"transfer-key": TRANSFER_SECRET},
     )
 
 
 def axfr(zone, settings):
-    keyring = dns.tsigkeyring.from_text({"transfer-key": TRANSFER_SECRET})
+    keyring = dns.tsigkeyring.from_text({"update-key": UPDATE_SECRET})
     xfr = dns.query.xfr(
         settings.nameserver, zone, port=settings.port, keyring=keyring, keyalgorithm="hmac-sha256", relativize=False
     )

@@ -76,7 +76,7 @@ cycle refuses to run.
 On start and every `RECONCILE_INTERVAL` seconds, for the forward zone and every
 configured reverse zone:
 
-1. Read the live zone via AXFR (read-only transfer TSIG key).
+1. Read the live zone via AXFR.
 2. Exclude marked names and zone meta; the rest of the managed-type RRsets are owned.
 3. Diff against the declared records at RRset granularity and apply adds/updates as
    whole-RRset replaces, and purges as per-record deletes.
@@ -103,8 +103,7 @@ A bad or empty source file must never cause a wrongful mass-purge:
 | `ZONE` | *(required)* | Forward zone to manage |
 | `NAMESERVER` | *(required)* | BIND primary to send updates/AXFR to (IP or hostname) |
 | `REVERSE_ZONES` | *(required)* | Comma-separated reverse zones, e.g. `168.192.in-addr.arpa,8.b.d.0.1.0.0.2.ip6.arpa` |
-| `KEYRING_JSON` | *(required)* | Update TSIG key (hmac-sha256), JSON `{"name": "secret"}` |
-| `TRANSFER_KEYRING_JSON` | *(required)* | Read-only AXFR TSIG key (hmac-sha256), JSON |
+| `KEYRING_JSON` | *(required)* | TSIG key for updates and AXFR (hmac-sha256), JSON `{"name": "secret"}` — needs both `allow-update` and `allow-transfer` on the managed zones |
 | `MARKER_PREFIX` | `x-dyn:` | Shared marker convention (see above); must match the dynamic writer |
 | `TTL` | `3600` | Default record TTL |
 | `RECORDS_FILE` | `/config/records.yaml` | Path to the records file |
