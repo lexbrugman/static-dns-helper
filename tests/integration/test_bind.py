@@ -4,7 +4,7 @@ Skipped automatically when no container API socket is reachable (docker, or
 rootless podman via `systemctl --user enable --now podman.socket` plus
 DOCKER_HOST pointing at the podman socket). The container serves the forward
 zone plus a v4 and a v6 reverse zone, seeded with marked "lease" records
-(the dhcp-dns-helper convention) and unmarked drift for the purge assertions.
+(the dynamic-writer convention) and unmarked drift for the purge assertions.
 """
 
 import base64

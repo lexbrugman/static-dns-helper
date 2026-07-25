@@ -7,9 +7,9 @@ diffs it against the declared records, and applies adds, updates, and purges unt
 the zone converges. One running instance manages one forward zone plus a configured
 set of reverse zones.
 
-Its counterpart, [dhcp-dns-helper](https://github.com/lexbrugman/dhcp-dns-helper),
-writes the dynamic (DHCP lease) records. The two services share no code — only the
-marker convention below.
+It can share its zones with dynamic writers — services that register records at
+runtime, such as a DHCP-lease registrar. No code is shared with such writers,
+only the marker convention below.
 
 ## The marker contract (published interface)
 
@@ -17,10 +17,11 @@ marker convention below.
 > starts with `MARKER_PREFIX` (default `x-dyn:`). Zone owners must never modify or
 > purge a record so marked.
 
-This is the sole coupling between static-dns-helper and dhcp-dns-helper, and the
-sole mechanism protecting dynamic records from the purge pass. Both services must
-be deployed with the same `MARKER_PREFIX` value. A name bearing a marker TXT is
-off-limits in its entirety: every record type at that name is left alone.
+This is the sole coupling between static-dns-helper and any dynamic writer, and
+the sole mechanism protecting dynamic records from the purge pass. All writers in
+a zone must be deployed with the same `MARKER_PREFIX` value. A name bearing a
+marker TXT is off-limits in its entirety: every record type at that name is left
+alone.
 
 ## Ownership model
 
@@ -114,9 +115,9 @@ A bad or empty source file must never cause a wrongful mass-purge:
 | `DNS_PORT` | `53` | Nameserver port (mainly for tests) |
 | `LOG_LEVEL` | `INFO` | `DEBUG` logs the full plan per cycle |
 
-When reconciling IPv4 reverse zones shared with dhcp-dns-helper, `REVERSE_ZONES`
-must include exactly the in-addr.arpa zone(s) it writes to, so static PTRs land in
-the same zones and marked lease PTRs are honored.
+When a reverse zone is shared with a dynamic writer, `REVERSE_ZONES` must include
+exactly the reverse zone(s) that writer updates, so static PTRs land in the same
+zones and marked dynamic PTRs are honored.
 
 ## Running
 
