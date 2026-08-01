@@ -202,11 +202,14 @@ def test_full_reconcile_lifecycle(settings):
     run_cycle(settings, RECORDS_FULL)
 
     forward = axfr(FORWARD, settings)
-    assert values(forward, f"nas.{FORWARD}", dns.rdatatype.A) == {"10.42.1.10", "10.42.1.11"}
-    assert values(forward, f"nas.{FORWARD}", dns.rdatatype.AAAA) == {"2001:db8::10"}
-    assert values(forward, f"www.{FORWARD}", dns.rdatatype.CNAME) == {f"nas.{FORWARD}."}
-    assert values(forward, f"mail.{FORWARD}", dns.rdatatype.MX) == {f"10 nas.{FORWARD}."}
-    assert values(forward, f"_dmarc.{FORWARD}", dns.rdatatype.TXT) == {'"v=DMARC1; p=none"'}
+    expected = {
+        (f"nas.{FORWARD}", dns.rdatatype.A): {"10.42.1.10", "10.42.1.11"},
+        (f"nas.{FORWARD}", dns.rdatatype.AAAA): {"2001:db8::10"},
+        (f"www.{FORWARD}", dns.rdatatype.CNAME): {f"nas.{FORWARD}."},
+        (f"mail.{FORWARD}", dns.rdatatype.MX): {f"10 nas.{FORWARD}."},
+        (f"_dmarc.{FORWARD}", dns.rdatatype.TXT): {'"v=DMARC1; p=none"'},
+    }
+    assert {key: values(forward, *key) for key in expected} == expected
 
     # marked lease records survive, in both directions
     assert values(forward, f"lease1.{FORWARD}", dns.rdatatype.A) == {"10.42.1.100"}
