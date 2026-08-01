@@ -39,10 +39,16 @@ class TestDiff:
         plan = diff_zone(ZONE, {key: desired_a("10.42.1.10")}, {key: live_a("10.42.1.10")})
         assert plan == []
 
-    def test_value_and_ttl_drift_converged(self):
+    def test_added_value_is_drift(self):
         key = (name("nas"), dns.rdatatype.A)
         assert diff_zone(ZONE, {key: desired_a("10.42.1.10", "10.42.1.11")}, {key: live_a("10.42.1.10")}) != []
+
+    def test_ttl_change_alone_is_drift(self):
+        key = (name("nas"), dns.rdatatype.A)
         assert diff_zone(ZONE, {key: desired_a("10.42.1.10", ttl=60)}, {key: live_a("10.42.1.10", ttl=3600)}) != []
+
+    def test_replace_carries_desired_ttl(self):
+        key = (name("nas"), dns.rdatatype.A)
         (action,) = diff_zone(ZONE, {key: desired_a("10.42.1.10", ttl=60)}, {key: live_a("10.42.1.10")})
         assert isinstance(action, Replace)
         assert action.ttl == 60

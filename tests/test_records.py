@@ -123,13 +123,16 @@ class TestReverseZoneMatching:
         assert (name("10.1.42.10.in-addr.arpa"), dns.rdatatype.PTR) in desired[name("1.42.10.in-addr.arpa")]
         assert (name("10.2.42.10.in-addr.arpa"), dns.rdatatype.PTR) in desired[name("42.10.in-addr.arpa")]
 
-    def test_address_outside_reverse_zones_rejected(self, settings):
-        message = errors_of(settings, {"name": "x", "type": "A", "value": "192.168.1.1"})
-        assert "matches no REVERSE_ZONES entry" in message
-
-    def test_v6_address_outside_reverse_zones_rejected(self, settings):
-        message = errors_of(settings, {"name": "x", "type": "AAAA", "value": "2001:db9::1"})
-        assert "matches no REVERSE_ZONES entry" in message
+    @pytest.mark.parametrize(
+        "entry",
+        [
+            {"name": "x", "type": "A", "value": "192.168.1.1"},
+            {"name": "x", "type": "AAAA", "value": "2001:db9::1"},
+        ],
+        ids=["v4", "v6"],
+    )
+    def test_address_outside_reverse_zones_rejected(self, settings, entry):
+        assert "matches no REVERSE_ZONES entry" in errors_of(settings, entry)
 
     def test_ptr_false_exempt_from_reverse_zone_check(self, settings):
         desired = desired_of(settings, {"name": "x", "type": "A", "value": "192.168.1.1", "ptr": False})
@@ -145,24 +148,35 @@ class TestReverseZoneMatching:
 
 
 class TestValidation:
-    def test_unknown_type_rejected(self, settings):
-        assert "'type' must be one of" in errors_of(settings, {"name": "x", "type": "NS", "value": "ns1"})
-        assert "'type' must be one of" in errors_of(settings, {"name": "@", "type": "SOA", "value": "a b 1 2 3 4 5"})
-
-    def test_bad_ip_literals_rejected(self, settings):
-        assert "not a valid IPv4 address" in errors_of(
-            settings, {"name": "x", "type": "A", "value": "10.42.1.999"}
-        )
-        assert "not a valid IPv4 address" in errors_of(
-            settings, {"name": "x", "type": "A", "value": "2001:db8::1"}
-        )
-        assert "not a valid IPv6 address" in errors_of(
-            settings, {"name": "x", "type": "AAAA", "value": "10.42.1.10"}
-        )
-
-    def test_bad_mx_and_srv_shapes_rejected(self, settings):
-        assert "invalid MX value" in errors_of(settings, {"name": "x", "type": "MX", "value": "nas"})
-        assert "invalid SRV value" in errors_of(settings, {"name": "x", "type": "SRV", "value": "10 nas"})
+    @pytest.mark.parametrize(
+        "entry, fragment",
+        [
+            ({"name": "x", "type": "NS", "value": "ns1"}, "'type' must be one of"),
+            ({"name": "@", "type": "SOA", "value": "a b 1 2 3 4 5"}, "'type' must be one of"),
+            ({"name": "x", "type": "A", "value": "10.42.1.999"}, "not a valid IPv4 address"),
+            ({"name": "x", "type": "A", "value": "2001:db8::1"}, "not a valid IPv4 address"),
+            ({"name": "x", "type": "AAAA", "value": "10.42.1.10"}, "not a valid IPv6 address"),
+            ({"name": "x", "type": "MX", "value": "nas"}, "invalid MX value"),
+            ({"name": "x", "type": "SRV", "value": "10 nas"}, "invalid SRV value"),
+            ({"name": "x", "type": "A", "value": "10.42.1.10", "reverse": True}, "unknown keys"),
+            ({"name": "www", "type": "CNAME", "value": "nas", "ptr": False}, "'ptr' only applies"),
+            ({"name": "nas.example.internal.", "type": "A", "value": "10.42.1.10"}, "no trailing dot"),
+        ],
+        ids=[
+            "ns-type",
+            "soa-type",
+            "malformed-v4",
+            "v6-literal-in-a",
+            "v4-literal-in-aaaa",
+            "mx-without-priority",
+            "srv-too-few-fields",
+            "unknown-key",
+            "ptr-flag-on-cname",
+            "absolute-name",
+        ],
+    )
+    def test_single_record_rejected(self, settings, entry, fragment):
+        assert fragment in errors_of(settings, entry)
 
     def test_cname_coexistence_rejected(self, settings):
         message = errors_of(
@@ -196,25 +210,14 @@ class TestValidation:
         )
         assert "conflicting ttl" in message
 
-    def test_unknown_keys_rejected(self, settings):
-        assert "unknown keys" in errors_of(
-            settings, {"name": "x", "type": "A", "value": "10.42.1.10", "reverse": True}
-        )
-
-    def test_ptr_flag_on_non_address_type_rejected(self, settings):
-        assert "'ptr' only applies" in errors_of(
-            settings, {"name": "www", "type": "CNAME", "value": "nas", "ptr": False}
-        )
-
-    def test_absolute_name_rejected(self, settings):
-        assert "no trailing dot" in errors_of(
-            settings, {"name": "nas.example.internal.", "type": "A", "value": "10.42.1.10"}
-        )
-
-    def test_document_shape_enforced(self, settings):
-        for bad in (None, [], "records", {"record": []}, {"records": "nope"}):
-            with pytest.raises(RecordsError, match="'records' list"):
-                build_desired(bad, settings)
+    @pytest.mark.parametrize(
+        "document",
+        [None, [], "records", {"record": []}, {"records": "nope"}],
+        ids=["none", "bare-list", "bare-string", "misspelled-key", "records-not-a-list"],
+    )
+    def test_document_shape_enforced(self, settings, document):
+        with pytest.raises(RecordsError, match="'records' list"):
+            build_desired(document, settings)
 
     def test_all_errors_reported_at_once(self, settings):
         message = errors_of(
@@ -233,8 +236,15 @@ class TestEmptySource:
         assert all(rrsets == {} for rrsets in desired.values())
 
 
-def test_quote_txt_escapes_and_chunks():
-    assert quote_txt('say "hi"') == '"say \\"hi\\""'
-    assert quote_txt("back\\slash") == '"back\\\\slash"'
-    assert quote_txt("") == '""'
-    assert quote_txt("x" * 256) == '"' + "x" * 255 + '" "x"'
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ('say "hi"', '"say \\"hi\\""'),
+        ("back\\slash", '"back\\\\slash"'),
+        ("", '""'),
+        ("x" * 256, '"' + "x" * 255 + '" "x"'),
+    ],
+    ids=["embedded-quotes", "backslash", "empty", "chunked-at-255"],
+)
+def test_quote_txt_escapes_and_chunks(value, expected):
+    assert quote_txt(value) == expected
