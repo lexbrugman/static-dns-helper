@@ -133,6 +133,29 @@ non-zero when the last successful reconcile is more than 2× `RECONCILE_INTERVAL
 ago — wire it as an exec liveness probe. Fail-closed states (bad input, failed
 updates) stop the heartbeat and surface there.
 
+CI publishes, on every push to `master`:
+
+```text
+ghcr.io/lexbrugman/static-dns-helper:<version>
+ghcr.io/lexbrugman/static-dns-helper:latest
+```
+
+Versions are CalVer — `<year>.<month><day>.<n>`, e.g. `2026.822.0` — and are
+decided by the build that publishes them, in one place. The date is the
+build's own; `n` counts that day's publishes from zero, and is resolved by
+asking GHCR which tags it already holds. Nothing records a version in git:
+there is no tag, no release and no committed version file, so nothing can
+drift out of step with what is published. The registry is the record, and
+what an image is stays readable from the image: `<version>` in
+`org.opencontainers.image.version`, and the commit it was built from in
+`org.opencontainers.image.revision`.
+
+Build locally:
+
+```sh
+docker build --build-arg GIT_SHA="$(git rev-parse HEAD)" -t ghcr.io/lexbrugman/static-dns-helper:dev .
+```
+
 ## Development
 
 ```
